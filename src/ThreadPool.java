@@ -9,7 +9,8 @@ enum ThreadState {
 
 public class ThreadPool {
     private static ThreadPool instance = null;
-    private final ArrayList<Thread> threads = new ArrayList<>();
+    private final AbstractAggregate threads = new ThreadCollection();
+    private final AbstractIterator threadIterator = threads.CreateIterator();
     private static final Lock lock = new ReentrantLock();
 
     public static ThreadPool getThreadPool() {
@@ -31,16 +32,19 @@ public class ThreadPool {
     public Thread getThread(int priority) {
         Thread selectedThread = null;
 
-        for (int index = 0; index < threads.size(); index++) {
-            Thread currentThread = threads.get(index);
+        for (threadIterator.First(); !threadIterator.IsDone(); threadIterator.Next()) {
+            Thread currentThread = threadIterator.CurrentThread();
             if (currentThread.priority == priority) {
                 currentThread.currentState = ThreadState.BUSY;
-                selectedThread = threads.remove(index);
+                lock.lock();
+                selectedThread = threads.remove(currentThread);
+                lock.unlock();
+                break;
             }
         }
 
         if (selectedThread == null) {
-            System.out.println("All threads are busy.");
+            System.out.println("All priority: " + priority + " threads are busy.");
         }
 
         return selectedThread;
@@ -143,14 +147,101 @@ class ThreadTable {
 
 }
 
+interface  AbstractIterator {
+    void First();
+    void Next();
+    Boolean IsDone();
+    Thread CurrentThread();
+}
+
+//
+//This is the "concrete" Iterator for collection.
+//		CollectionIterator
+//
+
+class CollectionIterator implements AbstractIterator {
+    private final ThreadCollection threadCollection;
+    private int current;
+
+    public void First() {
+        current = 0;
+    }
+
+    public void Next() {
+        current++;
+    }
+
+    public Thread CurrentThread() {
+        return IsDone() ? null : threadCollection.get(current);
+    }
+
+    public Boolean IsDone() {
+        return current >= threadCollection.getCount();
+    }
+
+    public CollectionIterator(ThreadCollection threadCollection) {
+        this.threadCollection = threadCollection;
+        current = 0;
+    }
+}
+
+
+//
+//This is the abstract "Aggregate".
+//			AbstractAggregate
+//
+
+interface AbstractAggregate {
+    AbstractIterator CreateIterator();
+    void add(Thread thread); // Not needed for iteration.
+    Thread remove(Thread thread); // Not needed for iteration.
+    int getCount(); // Needed for iteration.
+    Thread get(int idx); // Needed for iteration.
+}
+
+//
+//This is the concrete Aggregate.
+//			Collection
+//
+
+class ThreadCollection implements AbstractAggregate {
+    private final ArrayList<Thread> threads = new ArrayList<>();
+
+    public CollectionIterator CreateIterator() {
+        return new CollectionIterator(this);
+    }
+
+    public int getCount() {
+        return threads.size();
+    }
+
+    public void add(Thread thread) {
+        threads.add(thread);
+    }
+
+    public Thread remove(Thread thread) {
+        threads.remove(thread);
+        return thread;
+    }
+
+    public Thread get(int index) {
+        return threads.get(index);
+    }
+}
+
 class Main {
     public static void main(String[] args) {
         ThreadPool threadPool = ThreadPool.getThreadPool();
 
-        Thread t1 = threadPool.getThread(1);
-        System.out.println(t1);
-
-        Thread t2 = threadPool.getThread(5);
-        System.out.println(t2);
+        threadPool.getThread(1);
+        threadPool.getThread(5);
+        threadPool.getThread(5);
+        threadPool.getThread(1);
+        threadPool.getThread(5);
+        threadPool.getThread(1);
+        threadPool.getThread(1);
+        threadPool.getThread(5);
+        threadPool.getThread(5);
+        threadPool.getThread(1);
     }
 }
