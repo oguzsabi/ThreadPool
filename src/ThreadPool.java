@@ -50,6 +50,12 @@ public class ThreadPool {
         return selectedThread;
     }
 
+    public void returnThread(Thread thread) {
+        lock.lock();
+        threads.add(thread);
+        lock.unlock();
+    }
+
     // Constructor (private).
     private ThreadPool() {
         HThreadFactory hThreadFactory = new HThreadFactory();
@@ -233,15 +239,30 @@ class Main {
     public static void main(String[] args) {
         ThreadPool threadPool = ThreadPool.getThreadPool();
 
-        threadPool.getThread(1);
+        // Tasks are using threads
+        Thread hThread1 = threadPool.getThread(1);
+        Thread lThread1 = threadPool.getThread(5);
+        Thread lThread2 = threadPool.getThread(5);
+        Thread hThread2 = threadPool.getThread(1);
+        Thread lThread3 = threadPool.getThread(5);
+        Thread hThread3 = threadPool.getThread(1);
+        Thread hThread4 = threadPool.getThread(1);
+        Thread lThread4 = threadPool.getThread(5);
         threadPool.getThread(5);
-        threadPool.getThread(5);
         threadPool.getThread(1);
-        threadPool.getThread(5);
-        threadPool.getThread(1);
-        threadPool.getThread(1);
-        threadPool.getThread(5);
-        threadPool.getThread(5);
-        threadPool.getThread(1);
+
+        // Tasks are returning threads after their jobs are done
+        threadPool.returnThread(hThread1);
+        threadPool.returnThread(hThread2);
+        threadPool.returnThread(hThread3);
+        threadPool.returnThread(hThread4);
+//        hThread1 = threadPool.getThread(1);
+//        lThread1 = threadPool.getThread(5);
+//        lThread2 = threadPool.getThread(5);
+//        hThread2 = threadPool.getThread(1);
+//        lThread3 = threadPool.getThread(5);
+//        hThread3 = threadPool.getThread(1);
+//        hThread4 = threadPool.getThread(1);
+//        lThread4 = threadPool.getThread(5);
     }
 }
