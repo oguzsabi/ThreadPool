@@ -11,13 +11,13 @@ enum ThreadState {
 
 public class ThreadPool {
     private static ThreadPool instance = null;
-    private static ThreadCreation facade = null;
+    private static ThreadCreationProcess facade = null;
     private final AbstractAggregate threads = new ThreadCollection();
     private final AbstractIterator threadIterator = threads.CreateIterator();
 
     public static ThreadPool getThreadPool() {
         if (instance == null) {
-            facade = new ThreadCreation();
+            facade = new ThreadCreationProcess();
             instance = new ThreadPool();
         }
         return instance;
@@ -62,21 +62,36 @@ public class ThreadPool {
     private ThreadPool() {
         HThreadFactory hThreadFactory = new HThreadFactory();
         LThreadFactory lThreadFactory = new LThreadFactory();
+        int numberOfHeavyThreads = 4;
+        int numberOfLightThreads = 4;
 
-        threads.add(createThread(hThreadFactory));
-        threads.add(createThread(hThreadFactory));
-        threads.add(createThread(lThreadFactory));
-        threads.add(createThread(hThreadFactory));
-        threads.add(createThread(lThreadFactory));
-        threads.add(createThread(lThreadFactory));
-        threads.add(createThread(hThreadFactory));
-        threads.add(createThread(lThreadFactory));
+        for (int i = 0; i < numberOfHeavyThreads; i++) {
+            Thread newThread = createThread(hThreadFactory);
+
+            if (newThread != null) {
+                threads.add(newThread);
+            }
+        }
+
+        for (int i = 0; i < numberOfLightThreads; i++) {
+            Thread newThread = createThread(lThreadFactory);
+
+            if (newThread != null) {
+                threads.add(newThread);
+            }
+        }
     }
 
     private Thread createThread(ThreadFactory threadFactory) {
         Thread thread = threadFactory.createThread();
-        facade.createThreadData(thread);
-        return thread;
+         // assign priority part can be inside facade as well.
+        boolean canAddThreadToPool = facade.processThreadCreation(thread);
+
+        if (canAddThreadToPool) {
+            return thread;
+        }
+
+        return null;
     }
 }
 
@@ -118,21 +133,29 @@ abstract class Thread extends Processable {
 
     @Override
     public void increaseMemoryUse(int memoryAmount) {
-        if (memoryUse + memoryAmount <= maxMemory) {
-            memoryUse += memoryAmount;
-            MemoryManager.recordMemoryChange(memoryAmount);
-        } else {
-            System.out.println("Threads cannot exceed their maximum memory!");
+        try {
+            if (memoryUse + memoryAmount <= maxMemory) {
+                memoryUse += memoryAmount;
+                MemoryManager.recordMemoryChange(memoryAmount);
+            } else {
+                throw new MemoryException("Threads cannot exceed their maximum memory!");
+            }
+        } catch (MemoryException e) {
+            System.out.println(e.getMessage());
         }
     }
 
     @Override
     public void decreaseMemoryUse(int memoryAmount) {
-        if (memoryUse - memoryAmount >= 0) {
-            memoryUse -= memoryAmount;
-            MemoryManager.recordMemoryChange(-memoryAmount);
-        } else {
-            System.out.println("Threads cannot have negative memory usage!");
+        try {
+            if (memoryUse - memoryAmount >= 0) {
+                memoryUse -= memoryAmount;
+                MemoryManager.recordMemoryChange(-memoryAmount);
+            } else {
+                throw new MemoryException("Threads cannot have negative memory usage!");
+            }
+        } catch (MemoryException e) {
+            System.out.println(e.getMessage());
         }
     }
 
@@ -195,11 +218,11 @@ class MemoryManager {
         }
     }
 
-    public void allocateMemory(int memorySize) {
-        if (totalMemoryAllocated + memorySize > totalMaxMemory) {
+    public void allocateMemory(int memorySize) throws MemoryException {
+        if (totalMemoryAllocated + memorySize <= totalMaxMemory) {
             totalMemoryAllocated += memorySize;
         } else {
-            System.out.println("Memory'yi sifirladik babacim");
+            throw new MemoryException("Total maximum memory limit exceeded!");
         }
     }
 
@@ -212,7 +235,7 @@ class MemoryManager {
             fh.setFormatter(formatter);
 
             // the following statement is used to log any messages
-            logger.info("Memory Limit of 1024MB is exceeded!");
+            logger.info("Memory Limit of " + memoryLimitForLogging + "MB is exceeded!");
         } catch (SecurityException | IOException e) {
             e.printStackTrace();
         }
@@ -220,25 +243,43 @@ class MemoryManager {
 }
 
 // FACADE
-class ThreadCreation {
-    private MemoryManager memoryManager;
-    private ThreadTable threadTable;
+class ThreadCreationProcess {
+    private final MemoryManager memoryManager;
+    private final ThreadTable threadTable;
 
-    public ThreadCreation() {
+    public ThreadCreationProcess() {
         memoryManager = new MemoryManager();
         threadTable = new ThreadTable();
     }
 
-    public boolean createThreadData(Thread thread) {
-        // call allocateMemory
-        // call createThreadTableEntry
-        return true;
+    public boolean processThreadCreation(Thread thread) {
+        try {
+            memoryManager.allocateMemory(thread.maxMemory);
+            threadTable.createThreadTableEntry(thread);
+            return true;
+        } catch (MemoryException exception) {
+            System.out.println(exception.getMessage());
+            System.out.println("New thread will be destroyed...");
+            return false;
+        }
     }
 }
 
 class ThreadTable {
-    public static void createThreadTableEntry(Thread thread) {
+    private final AbstractAggregate threadTable;
 
+    public ThreadTable() {
+        this.threadTable = new ThreadCollection();
+    }
+
+    public void createThreadTableEntry(Thread thread) {
+        switch (thread.priority) {
+            case 1 -> System.out.println("Created a heavy thread table entry!");
+            case 5 -> System.out.println("Created a light thread table entry!");
+            default -> System.out.println("Created a thread table entry!");
+        }
+
+        threadTable.add(thread);
     }
 }
 
@@ -314,6 +355,12 @@ class ThreadCollection implements AbstractAggregate {
 
     public Thread get(int index) {
         return threads.get(index);
+    }
+}
+
+class MemoryException extends Exception {
+    public MemoryException(String message) {
+        super(message);
     }
 }
 
