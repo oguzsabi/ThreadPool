@@ -388,5 +388,9 @@ class Main {
         threadPool.returnThread(hThread2);
         threadPool.returnThread(hThread3);
         threadPool.returnThread(hThread4);
+        threadPool.returnThread(lThread1);
+        threadPool.returnThread(lThread2);
+        threadPool.returnThread(lThread3);
+        threadPool.returnThread(lThread4);
     }
 }
