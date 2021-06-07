@@ -110,6 +110,7 @@ abstract class Thread extends Processable {
     protected ThreadState currentState;
     protected int maxMemory;
     protected int memoryUse;
+    protected MemoryManager memoryManager = new MemoryManager();
 
     @Override
     public void setState(ThreadState state) {
@@ -136,7 +137,7 @@ abstract class Thread extends Processable {
         try {
             if (memoryUse + memoryAmount <= maxMemory) {
                 memoryUse += memoryAmount;
-                MemoryManager.recordMemoryChange(memoryAmount);
+                memoryManager.recordMemoryChange(memoryAmount);
             } else {
                 throw new MemoryException("Threads cannot exceed their maximum memory!");
             }
@@ -150,7 +151,7 @@ abstract class Thread extends Processable {
         try {
             if (memoryUse - memoryAmount >= 0) {
                 memoryUse -= memoryAmount;
-                MemoryManager.recordMemoryChange(-memoryAmount);
+                memoryManager.recordMemoryChange(-memoryAmount);
             } else {
                 throw new MemoryException("Threads cannot have negative memory usage!");
             }
@@ -210,7 +211,7 @@ class MemoryManager {
     private static final int memoryLimitForLogging = 1024;
     private static final Logger logger = Logger.getLogger("ThreadMemoryLogger");
 
-    public static void recordMemoryChange(int memoryChange) {
+    public void recordMemoryChange(int memoryChange) {
         totalMemoryUsed += memoryChange;
 
         if (totalMemoryUsed > memoryLimitForLogging) {
