@@ -4,6 +4,13 @@ import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
+// Utku Işıl
+// Doruk Maltepe
+// Avni Yunus Demirel
+// Oğuz Sabitay
+// Thread Pool
+
+// Enum used for thread states instead of String
 enum ThreadState {
     IDLE,
     BUSY
@@ -294,7 +301,7 @@ interface AbstractIterator {
 //This is the "concrete" Iterator for collection.
 //		CollectionIterator
 
-class CollectionIterator implements AbstractIterator {
+class ThreadIterator implements AbstractIterator {
     private final ThreadCollection threadCollection;
     private int current;
 
@@ -314,7 +321,7 @@ class CollectionIterator implements AbstractIterator {
         return current >= threadCollection.getCount();
     }
 
-    public CollectionIterator(ThreadCollection threadCollection) {
+    public ThreadIterator(ThreadCollection threadCollection) {
         this.threadCollection = threadCollection;
         current = 0;
     }
@@ -337,8 +344,8 @@ interface AbstractAggregate {
 class ThreadCollection implements AbstractAggregate {
     private final ArrayList<Thread> threads = new ArrayList<>();
 
-    public CollectionIterator CreateIterator() {
-        return new CollectionIterator(this);
+    public ThreadIterator CreateIterator() {
+        return new ThreadIterator(this);
     }
 
     public int getCount() {
