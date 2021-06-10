@@ -88,7 +88,7 @@ public class ThreadPool {
             Task currentTask = taskIterator.currentTask();
 
             if (!currentTask.hasThread()) {
-                taskIterator.currentTask().update();
+                currentTask.update();
             }
         }
     }
@@ -516,6 +516,10 @@ class Task implements Observer {
         this.thread = thread;
     }
 
+    public Thread getThread() {
+        return this.thread;
+    }
+
     public void returnThread() {
         if (this.thread != null) {
             threadPool.detach(this);
@@ -553,6 +557,9 @@ class Main {
         Task task8 = new Task("task8", 5, 200);
         Task task9 = new Task("task9", 5, 250);
         Task task10 = new Task("task10", 1, 400);
+        Task task11 = new Task("task11", 1, 400);
+        Task task12 = new Task("task12", 5, 133);
+        Task task13 = new Task("task13", 5, 99);
 
         taskCollection.add(task1);
         taskCollection.add(task2);
@@ -564,12 +571,22 @@ class Main {
         taskCollection.add(task8);
         taskCollection.add(task9);
         taskCollection.add(task10);
+        taskCollection.add(task11);
+        taskCollection.add(task12);
+        taskCollection.add(task13);
 
         for (taskIterator.first(); !taskIterator.isDone(); taskIterator.next()) {
             Task currentTask = taskIterator.currentTask();
             currentTask.assignThread(threadPool.getThread(currentTask.getTaskPriority(), currentTask.getInitialMemoryRequirement()));
         }
 
+        System.out.println(task1.getThread().memoryUse);
+        task1.getThread().increaseMemoryUse(200);
+        System.out.println(task1.getThread().memoryUse);
+        task1.getThread().decreaseMemoryUse(300);
+        System.out.println(task1.getThread().memoryUse);
+        task1.getThread().increaseMemoryUse(100);
+        System.out.println(task1.getThread().memoryUse);
         System.out.println("1 -------");
         task1.returnThread();
         System.out.println("2 -------");
@@ -584,5 +601,11 @@ class Main {
         task6.returnThread();
         System.out.println("7 -------");
         task7.returnThread();
+        System.out.println("8 -------");
+        task8.returnThread();
+        System.out.println("9 -------");
+        task9.returnThread();
+        System.out.println("10 -------");
+        task10.returnThread();
     }
 }
