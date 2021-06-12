@@ -64,7 +64,7 @@ public class ThreadPool {
         return selectedThread;
     }
 
-    public void returnThread(Thread thread) {
+    public void reclaimThread(Thread thread) {
         thread.currentState = ThreadState.IDLE;
         thread.resetMemoryUse();
         threads.add(thread);
@@ -523,7 +523,7 @@ class Task implements Observer {
     public void returnThread() {
         if (this.thread != null) {
             threadPool.detach(this);
-            threadPool.returnThread(this.thread);
+            threadPool.reclaimThread(this.thread);
             this.thread = null;
         }
     }
