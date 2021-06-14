@@ -16,6 +16,7 @@ enum ThreadState {
     BUSY
 }
 
+// Singleton class. Subject for observer pattern. Client for abstract factory pattern.
 public class ThreadPool {
     private static ThreadPool instance = null;
     private static ThreadCreationProcess facade = null;
@@ -24,15 +25,39 @@ public class ThreadPool {
     private final ThreadIterator threadIterator = threads.createIterator();
     private final TaskIterator taskIterator = tasks.createIterator();
 
+    // Constructor (private).
+    private ThreadPool() {
+        HThreadFactory hThreadFactory = new HThreadFactory();
+        LThreadFactory lThreadFactory = new LThreadFactory();
+        int numberOfHeavyThreads = 4;
+        int numberOfLightThreads = 4;
+
+        for (int i = 0; i < numberOfHeavyThreads; i++) {
+            Thread newThread = createThread(hThreadFactory);
+
+            if (newThread != null) {
+                threads.add(newThread);
+            }
+        }
+
+        for (int i = 0; i < numberOfLightThreads; i++) {
+            Thread newThread = createThread(lThreadFactory);
+
+            if (newThread != null) {
+                threads.add(newThread);
+            }
+        }
+    }
+
     public static ThreadPool getThreadPool() {
         if (instance == null) {
             facade = new ThreadCreationProcess();
             instance = new ThreadPool();
         }
+
         return instance;
     }
 
-    // Simple load balancer
     public Thread getThread(int priority, int memoryRequirement) {
         if (priority == 5 && memoryRequirement > 256) {
             System.out.println("Priority and memory requirement does not match. Changing priority to 1!");
@@ -71,6 +96,7 @@ public class ThreadPool {
         Notify();
     }
 
+    //Register from the list of Observers.
     public void attach(Task task) {
         tasks.add(task);
     }
@@ -82,8 +108,6 @@ public class ThreadPool {
 
     //notify the Observers.
     public void Notify() {
-        // set argument to something that helps
-        // tell the Observers what happened
         for (taskIterator.first(); !taskIterator.isDone(); taskIterator.next()) {
             Task currentTask = taskIterator.currentTask();
 
@@ -93,33 +117,8 @@ public class ThreadPool {
         }
     }
 
-    // Constructor (private).
-    private ThreadPool() {
-        HThreadFactory hThreadFactory = new HThreadFactory();
-        LThreadFactory lThreadFactory = new LThreadFactory();
-        int numberOfHeavyThreads = 4;
-        int numberOfLightThreads = 4;
-
-        for (int i = 0; i < numberOfHeavyThreads; i++) {
-            Thread newThread = createThread(hThreadFactory);
-
-            if (newThread != null) {
-                threads.add(newThread);
-            }
-        }
-
-        for (int i = 0; i < numberOfLightThreads; i++) {
-            Thread newThread = createThread(lThreadFactory);
-
-            if (newThread != null) {
-                threads.add(newThread);
-            }
-        }
-    }
-
     private Thread createThread(ThreadFactory threadFactory) {
         Thread thread = threadFactory.createThread();
-         // assign priority part can be inside facade as well.
         boolean canAddThreadToPool = facade.processThreadCreation(thread);
 
         if (canAddThreadToPool) {
@@ -248,7 +247,6 @@ class MemoryManager {
     private static final Logger logger = Logger.getLogger("ThreadMemoryLogger");
     private static FileHandler fileHandler;
 
-
     public void recordMemoryChange(int memoryChange) {
         totalMemoryUsed += memoryChange;
 
@@ -267,7 +265,7 @@ class MemoryManager {
 
     private void logMemoryLimitExceed() {
         try {
-            // This block configure the logger with handler and formatter
+            // This block configures the logger with a file handler
             if (fileHandler == null) {
                 fileHandler = new FileHandler( System.getProperty("user.dir") + "/memory_manager.log");
                 logger.addHandler(fileHandler);
@@ -277,7 +275,7 @@ class MemoryManager {
             SimpleFormatter formatter = new SimpleFormatter();
             fileHandler.setFormatter(formatter);
 
-            // the following statement is used to log any messages
+            // the following statement is used to log our message
             logger.info("Memory Limit of " + memoryLimitForLogging + "MB is exceeded!");
         } catch (SecurityException | IOException e) {
             e.printStackTrace();
@@ -285,7 +283,7 @@ class MemoryManager {
     }
 }
 
-// FACADE
+// FACADE class
 class ThreadCreationProcess {
     private final MemoryManager memoryManager;
     private final ThreadTable threadTable;
@@ -299,10 +297,12 @@ class ThreadCreationProcess {
         try {
             memoryManager.allocateMemory(thread.maxMemory);
             threadTable.createThreadTableEntry(thread);
+
             return true;
         } catch (MemoryException exception) {
             System.out.println(exception.getMessage());
             System.out.println("New thread will be destroyed...");
+
             return false;
         }
     }
@@ -340,25 +340,27 @@ interface AbstractTaskIterator {
     Task currentTask();
 }
 
-//This is the "concrete" Iterator for collection.
-//		CollectionIterator
-
+//This is the "concrete" Iterator for thread collection.
 class ThreadIterator implements AbstractThreadIterator {
     private final ThreadCollection threadCollection;
     private int current;
 
+    @Override
     public void first() {
         current = 0;
     }
 
+    @Override
     public void next() {
         current++;
     }
 
+    @Override
     public Thread currentThread() {
         return isDone() ? null : threadCollection.get(current);
     }
 
+    @Override
     public Boolean isDone() {
         return current >= threadCollection.getCount();
     }
@@ -369,22 +371,27 @@ class ThreadIterator implements AbstractThreadIterator {
     }
 }
 
+//This is the "concrete" Iterator for task collection.
 class TaskIterator implements AbstractTaskIterator {
     private final TaskCollection taskCollection;
     private int current;
 
+    @Override
     public void first() {
         current = 0;
     }
 
+    @Override
     public void next() {
         current++;
     }
 
+    @Override
     public Task currentTask() {
         return isDone() ? null : taskCollection.get(current);
     }
 
+    @Override
     public Boolean isDone() {
         return current >= taskCollection.getCount();
     }
@@ -395,9 +402,7 @@ class TaskIterator implements AbstractTaskIterator {
     }
 }
 
-//This is the abstract "Aggregate".
-//			AbstractAggregate
-
+//This is the abstract "Aggregate" for thread collection.
 interface AbstractThreadAggregate {
     AbstractThreadIterator createIterator();
     void add(Thread thread); // Not needed for iteration.
@@ -406,6 +411,7 @@ interface AbstractThreadAggregate {
     Thread get(int index); // Needed for iteration.
 }
 
+//This is the abstract "Aggregate" for task collection.
 interface AbstractTaskAggregate {
     AbstractTaskIterator createIterator();
     void add(Task task); // Not needed for iteration.
@@ -414,9 +420,7 @@ interface AbstractTaskAggregate {
     Task get(int index); // Needed for iteration.
 }
 
-//This is the concrete Aggregate.
-//			Collection
-
+//This is the concrete Aggregate for threads.
 class ThreadCollection implements AbstractThreadAggregate {
     private final ArrayList<Thread> threads = new ArrayList<>();
 
@@ -438,6 +442,7 @@ class ThreadCollection implements AbstractThreadAggregate {
     @Override
     public Thread remove(Thread thread) {
         threads.remove(thread);
+
         return thread;
     }
 
@@ -447,6 +452,7 @@ class ThreadCollection implements AbstractThreadAggregate {
     }
 }
 
+//This is the concrete Aggregate for tasks.
 class TaskCollection implements AbstractTaskAggregate {
     private final ArrayList<Task> tasks = new ArrayList<>();
 
@@ -468,6 +474,7 @@ class TaskCollection implements AbstractTaskAggregate {
     @Override
     public Task remove(Task task) {
         tasks.remove(task);
+
         return task;
     }
 
@@ -494,7 +501,6 @@ class Task implements Observer {
     private final int initialMemoryRequirement;
     private Thread thread;
 
-    // Constructor
     public Task(String taskName, int taskPriority, int initialMemoryRequirement) {
         this.threadPool = ThreadPool.getThreadPool();
         threadPool.attach(this);
@@ -503,6 +509,7 @@ class Task implements Observer {
         this.initialMemoryRequirement = initialMemoryRequirement;
     }
 
+    @Override
     public void update() {
         System.out.println("NOTIFIED the following task: " + taskName);
         this.thread = threadPool.getThread(taskPriority, initialMemoryRequirement);
