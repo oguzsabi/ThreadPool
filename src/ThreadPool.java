@@ -96,7 +96,7 @@ public class ThreadPool {
         Notify();
     }
 
-    //Register from the list of Observers.
+    //Register to the list of Observers.
     public void attach(Task task) {
         tasks.add(task);
     }
