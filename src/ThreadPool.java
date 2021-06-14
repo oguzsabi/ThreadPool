@@ -129,6 +129,7 @@ public class ThreadPool {
     }
 }
 
+// Abstract product class
 abstract class Processable {
     abstract public void setState(ThreadState state);
     abstract public void increaseMemoryUse(int memoryAmount);
@@ -139,6 +140,7 @@ abstract class Processable {
     abstract public int getMemoryUse();
 }
 
+// Base class for our concrete products
 abstract class Thread extends Processable {
     protected int priority;
     protected ThreadState currentState;
@@ -201,6 +203,7 @@ abstract class Thread extends Processable {
     }
 }
 
+// One of our concrete products
 class HThread extends Thread {
     public HThread(int priority) {
         this.priority = priority;
@@ -211,6 +214,7 @@ class HThread extends Thread {
     }
 }
 
+// One of our concrete products
 class LThread extends Thread {
     public LThread(int priority) {
         this.priority = priority;
@@ -239,6 +243,7 @@ class LThreadFactory extends ThreadFactory {
     }
 }
 
+// This class is used for memory management simulation
 class MemoryManager {
     private static final int totalMaxMemory = 3072;
     private static int totalMemoryAllocated = 0;
@@ -308,6 +313,7 @@ class ThreadCreationProcess {
     }
 }
 
+// This class is used for thread table simulation
 class ThreadTable {
     private final ThreadCollection threadTable;
 
@@ -340,7 +346,7 @@ interface AbstractTaskIterator {
     Task currentTask();
 }
 
-//This is the "concrete" Iterator for thread collection.
+// This is the "concrete" Iterator for thread collection.
 class ThreadIterator implements AbstractThreadIterator {
     private final ThreadCollection threadCollection;
     private int current;
@@ -371,7 +377,7 @@ class ThreadIterator implements AbstractThreadIterator {
     }
 }
 
-//This is the "concrete" Iterator for task collection.
+// This is the "concrete" Iterator for task collection.
 class TaskIterator implements AbstractTaskIterator {
     private final TaskCollection taskCollection;
     private int current;
@@ -402,7 +408,7 @@ class TaskIterator implements AbstractTaskIterator {
     }
 }
 
-//This is the abstract "Aggregate" for thread collection.
+// This is the abstract "Aggregate" for thread collection.
 interface AbstractThreadAggregate {
     AbstractThreadIterator createIterator();
     void add(Thread thread); // Not needed for iteration.
@@ -411,7 +417,7 @@ interface AbstractThreadAggregate {
     Thread get(int index); // Needed for iteration.
 }
 
-//This is the abstract "Aggregate" for task collection.
+// This is the abstract "Aggregate" for task collection.
 interface AbstractTaskAggregate {
     AbstractTaskIterator createIterator();
     void add(Task task); // Not needed for iteration.
@@ -420,7 +426,7 @@ interface AbstractTaskAggregate {
     Task get(int index); // Needed for iteration.
 }
 
-//This is the concrete Aggregate for threads.
+// This is the concrete Aggregate for threads.
 class ThreadCollection implements AbstractThreadAggregate {
     private final ArrayList<Thread> threads = new ArrayList<>();
 
@@ -452,7 +458,7 @@ class ThreadCollection implements AbstractThreadAggregate {
     }
 }
 
-//This is the concrete Aggregate for tasks.
+// This is the concrete Aggregate for tasks.
 class TaskCollection implements AbstractTaskAggregate {
     private final ArrayList<Task> tasks = new ArrayList<>();
 
@@ -484,6 +490,7 @@ class TaskCollection implements AbstractTaskAggregate {
     }
 }
 
+// Our custom exception class
 class MemoryException extends Exception {
     public MemoryException(String message) {
         super(message);
@@ -550,7 +557,7 @@ class Task implements Observer {
 
 class Main {
     public static void main(String[] args) {
-        // we get our ThreadPool instance and create TaskCollection and TaskIterator objects.
+        // We get our ThreadPool instance and create TaskCollection and TaskIterator objects.
         ThreadPool threadPool = ThreadPool.getThreadPool();
         TaskCollection taskCollection = new TaskCollection();
         TaskIterator taskIterator = taskCollection.createIterator();
