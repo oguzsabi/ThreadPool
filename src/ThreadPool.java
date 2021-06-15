@@ -1,9 +1,3 @@
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.logging.FileHandler;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
-
 // Utku Işıl
 // Doruk Maltepe
 // Avni Yunus Demirel
@@ -129,367 +123,6 @@ public class ThreadPool {
     }
 }
 
-// Abstract product class
-abstract class Processable {
-    abstract public void setState(ThreadState state);
-    abstract public void increaseMemoryUse(int memoryAmount);
-    abstract public void decreaseMemoryUse(int memoryAmount);
-    abstract public void resetMemoryUse();
-    abstract public ThreadState getState();
-    abstract public int getPriority();
-    abstract public int getMemoryUse();
-}
-
-// Base class for our concrete products
-abstract class Thread extends Processable {
-    protected int priority;
-    protected ThreadState currentState;
-    protected int maxMemory;
-    protected int memoryUse;
-    protected MemoryManager memoryManager = new MemoryManager();
-
-    @Override
-    public void setState(ThreadState state) {
-        currentState = state;
-    }
-
-    @Override
-    public ThreadState getState() {
-        return currentState;
-    }
-
-    @Override
-    public int getPriority() {
-        return priority;
-    }
-
-    @Override
-    public int getMemoryUse() {
-        return memoryUse;
-    }
-
-    @Override
-    public void increaseMemoryUse(int memoryAmount) {
-        try {
-            if (memoryUse + memoryAmount <= maxMemory) {
-                memoryUse += memoryAmount;
-                memoryManager.recordMemoryChange(memoryAmount);
-            } else {
-                throw new MemoryException("Threads cannot exceed their maximum memory!");
-            }
-        } catch (MemoryException e) {
-            System.out.println(e.getMessage());
-        }
-    }
-
-    @Override
-    public void decreaseMemoryUse(int memoryAmount) {
-        try {
-            if (memoryUse - memoryAmount >= 0) {
-                memoryUse -= memoryAmount;
-                memoryManager.recordMemoryChange(-memoryAmount);
-            } else {
-                throw new MemoryException("Threads cannot have negative memory usage!");
-            }
-        } catch (MemoryException e) {
-            System.out.println(e.getMessage());
-        }
-    }
-
-    @Override
-    public void resetMemoryUse() {
-        memoryManager.recordMemoryChange(-this.memoryUse);
-        memoryUse = 0;
-    }
-}
-
-// One of our concrete products
-class HThread extends Thread {
-    public HThread(int priority) {
-        this.priority = priority;
-        this.currentState = ThreadState.IDLE;
-        this.maxMemory = 512;
-        this.memoryUse = 0;
-        System.out.println("HThread is created...");
-    }
-}
-
-// One of our concrete products
-class LThread extends Thread {
-    public LThread(int priority) {
-        this.priority = priority;
-        this.currentState = ThreadState.IDLE;
-        this.maxMemory = 256;
-        this.memoryUse = 0;
-        System.out.println("LThread is created...");
-    }
-}
-
-abstract class ThreadFactory {
-    abstract public Thread createThread();
-}
-
-class HThreadFactory extends ThreadFactory {
-    @Override
-    public Thread createThread() {
-        return new HThread(1);
-    }
-}
-
-class LThreadFactory extends ThreadFactory {
-    @Override
-    public Thread createThread() {
-        return new LThread(5);
-    }
-}
-
-// This class is used for memory management simulation
-class MemoryManager {
-    private static final int totalMaxMemory = 3072;
-    private static int totalMemoryAllocated = 0;
-    private static int totalMemoryUsed = 0;
-    private static final int memoryLimitForLogging = 1024;
-    private static final Logger logger = Logger.getLogger("ThreadMemoryLogger");
-    private static FileHandler fileHandler;
-
-    public void recordMemoryChange(int memoryChange) {
-        totalMemoryUsed += memoryChange;
-
-        if (totalMemoryUsed > memoryLimitForLogging) {
-            logMemoryLimitExceed();
-        }
-    }
-
-    public void allocateMemory(int memorySize) throws MemoryException {
-        if (totalMemoryAllocated + memorySize <= totalMaxMemory) {
-            totalMemoryAllocated += memorySize;
-        } else {
-            throw new MemoryException("Total maximum memory limit exceeded!");
-        }
-    }
-
-    private void logMemoryLimitExceed() {
-        try {
-            // This block configures the logger with a file handler
-            if (fileHandler == null) {
-                fileHandler = new FileHandler( System.getProperty("user.dir") + "/memory_manager.log");
-                logger.addHandler(fileHandler);
-                logger.setUseParentHandlers(false);
-            }
-
-            SimpleFormatter formatter = new SimpleFormatter();
-            fileHandler.setFormatter(formatter);
-
-            // the following statement is used to log our message
-            logger.info("Memory Limit of " + memoryLimitForLogging + "MB is exceeded!");
-        } catch (SecurityException | IOException e) {
-            e.printStackTrace();
-        }
-    }
-}
-
-// FACADE class
-class ThreadCreationProcess {
-    private final MemoryManager memoryManager;
-    private final ThreadTable threadTable;
-
-    public ThreadCreationProcess() {
-        memoryManager = new MemoryManager();
-        threadTable = new ThreadTable();
-    }
-
-    public boolean processThreadCreation(Thread thread) {
-        try {
-            memoryManager.allocateMemory(thread.maxMemory);
-            threadTable.createThreadTableEntry(thread);
-
-            return true;
-        } catch (MemoryException exception) {
-            System.out.println(exception.getMessage());
-            System.out.println("New thread will be destroyed...");
-
-            return false;
-        }
-    }
-}
-
-// This class is used for thread table simulation
-class ThreadTable {
-    private final ThreadCollection threadTable;
-
-    public ThreadTable() {
-        this.threadTable = new ThreadCollection();
-    }
-
-    public void createThreadTableEntry(Thread thread) {
-        switch (thread.priority) {
-            case 1 -> System.out.println("Created a heavy thread table entry!");
-            case 5 -> System.out.println("Created a light thread table entry!");
-            default -> System.out.println("Created a thread table entry!");
-        }
-
-        threadTable.add(thread);
-    }
-}
-
-interface AbstractThreadIterator {
-    void first();
-    void next();
-    Boolean isDone();
-    Thread currentThread();
-}
-
-interface AbstractTaskIterator {
-    void first();
-    void next();
-    Boolean isDone();
-    Task currentTask();
-}
-
-// This is the "concrete" Iterator for thread collection.
-class ThreadIterator implements AbstractThreadIterator {
-    private final ThreadCollection threadCollection;
-    private int current;
-
-    @Override
-    public void first() {
-        current = 0;
-    }
-
-    @Override
-    public void next() {
-        current++;
-    }
-
-    @Override
-    public Thread currentThread() {
-        return isDone() ? null : threadCollection.get(current);
-    }
-
-    @Override
-    public Boolean isDone() {
-        return current >= threadCollection.getCount();
-    }
-
-    public ThreadIterator(ThreadCollection threadCollection) {
-        this.threadCollection = threadCollection;
-        current = 0;
-    }
-}
-
-// This is the "concrete" Iterator for task collection.
-class TaskIterator implements AbstractTaskIterator {
-    private final TaskCollection taskCollection;
-    private int current;
-
-    @Override
-    public void first() {
-        current = 0;
-    }
-
-    @Override
-    public void next() {
-        current++;
-    }
-
-    @Override
-    public Task currentTask() {
-        return isDone() ? null : taskCollection.get(current);
-    }
-
-    @Override
-    public Boolean isDone() {
-        return current >= taskCollection.getCount();
-    }
-
-    public TaskIterator(TaskCollection taskCollection) {
-        this.taskCollection = taskCollection;
-        current = 0;
-    }
-}
-
-// This is the abstract "Aggregate" for thread collection.
-interface AbstractThreadAggregate {
-    AbstractThreadIterator createIterator();
-    void add(Thread thread); // Not needed for iteration.
-    Thread remove(Thread thread); // Not needed for iteration.
-    int getCount(); // Needed for iteration.
-    Thread get(int index); // Needed for iteration.
-}
-
-// This is the abstract "Aggregate" for task collection.
-interface AbstractTaskAggregate {
-    AbstractTaskIterator createIterator();
-    void add(Task task); // Not needed for iteration.
-    Task remove(Task task); // Not needed for iteration.
-    int getCount(); // Needed for iteration.
-    Task get(int index); // Needed for iteration.
-}
-
-// This is the concrete Aggregate for threads.
-class ThreadCollection implements AbstractThreadAggregate {
-    private final ArrayList<Thread> threads = new ArrayList<>();
-
-    @Override
-    public ThreadIterator createIterator() {
-        return new ThreadIterator(this);
-    }
-
-    @Override
-    public int getCount() {
-        return threads.size();
-    }
-
-    @Override
-    public void add(Thread thread) {
-        threads.add(thread);
-    }
-
-    @Override
-    public Thread remove(Thread thread) {
-        threads.remove(thread);
-
-        return thread;
-    }
-
-    @Override
-    public Thread get(int index) {
-        return threads.get(index);
-    }
-}
-
-// This is the concrete Aggregate for tasks.
-class TaskCollection implements AbstractTaskAggregate {
-    private final ArrayList<Task> tasks = new ArrayList<>();
-
-    @Override
-    public TaskIterator createIterator() {
-        return new TaskIterator(this);
-    }
-
-    @Override
-    public int getCount() {
-        return tasks.size();
-    }
-
-    @Override
-    public void add(Task task) {
-        tasks.add(task);
-    }
-
-    @Override
-    public Task remove(Task task) {
-        tasks.remove(task);
-
-        return task;
-    }
-
-    @Override
-    public Task get(int index) {
-        return tasks.get(index);
-    }
-}
-
 // Our custom exception class
 class MemoryException extends Exception {
     public MemoryException(String message) {
@@ -519,7 +152,7 @@ class Task implements Observer {
     @Override
     public void update() {
         System.out.println("NOTIFIED the following task: " + taskName);
-        this.thread = threadPool.getThread(taskPriority, initialMemoryRequirement);
+        assignThread(threadPool.getThread(taskPriority, initialMemoryRequirement));
     }
 
     public String getTaskName() {
@@ -527,6 +160,12 @@ class Task implements Observer {
     }
 
     public void assignThread(Thread thread) {
+        if (thread != null) {
+            System.out.println("Assigned thread of priority " + thread.priority + " to " + taskName + "\n");
+        } else {
+            System.out.println("Could not assign thread to " + taskName + "\n");
+        }
+
         this.thread = thread;
     }
 
@@ -592,50 +231,69 @@ class Main {
         taskCollection.add(task12);
         taskCollection.add(task13);
 
+        System.out.println();
+
         // Assigning IDLE threads to suitable tasks
         for (taskIterator.first(); !taskIterator.isDone(); taskIterator.next()) {
             Task currentTask = taskIterator.currentTask();
             currentTask.assignThread(threadPool.getThread(currentTask.getTaskPriority(), currentTask.getInitialMemoryRequirement()));
         }
 
+        System.out.println();
+
         // Memory increase and decrease example
-        System.out.println(task1.getThread().memoryUse);
+        System.out.println("Memory use of task1's thread: " + task1.getThread().memoryUse);
+        System.out.println("Increasing memory use of task1's thread by: 200");
         task1.getThread().increaseMemoryUse(200);
-        System.out.println(task1.getThread().memoryUse);
+        System.out.println("Memory use of task1's thread: " + task1.getThread().memoryUse);
+        System.out.println("Decreasing memory use of task1's thread by: 300");
         task1.getThread().decreaseMemoryUse(300);
-        System.out.println(task1.getThread().memoryUse);
+        System.out.println("Memory use of task1's thread: " + task1.getThread().memoryUse);
+        System.out.println("Increasing memory use of task1's thread by: 100");
         task1.getThread().increaseMemoryUse(100);
-        System.out.println(task1.getThread().memoryUse);
+        System.out.println("Memory use of task1's thread: " + task1.getThread().memoryUse);
+
+        System.out.println();
 
         // Finished tasks are returning their threads so that other tasks can start execution.
-        System.out.println("1 -------");
+        System.out.println("------- Return Thread of task1 -------");
         task1.returnThread();
+        System.out.println();
 
-        System.out.println("2 -------");
+        System.out.println("------- Return Thread of task2 -------");
         task2.returnThread();
+        System.out.println();
 
-        System.out.println("3 -------");
+        System.out.println("------- Return Thread of task3 -------");
         task3.returnThread();
+        System.out.println();
 
-        System.out.println("4 -------");
+        System.out.println("------- Return Thread of task4 -------");
         task4.returnThread();
+        System.out.println();
 
-        System.out.println("5 -------");
+        System.out.println("------- Return Thread of task5 -------");
         task5.returnThread();
+        System.out.println();
 
-        System.out.println("6 -------");
+        System.out.println("------- Return Thread of task6 -------");
         task6.returnThread();
+        System.out.println();
 
-        System.out.println("7 -------");
+        System.out.println("------- Return Thread of task7 -------");
         task7.returnThread();
+        System.out.println();
 
-        System.out.println("8 -------");
+        System.out.println("------- Return Thread of task8 -------");
         task8.returnThread();
+        System.out.println();
 
-        System.out.println("9 -------");
+        System.out.println("------- Return Thread of task9 -------");
         task9.returnThread();
+        System.out.println();
 
-        System.out.println("10 -------");
+        System.out.println("------- Return Thread of task10 -------");
         task10.returnThread();
+        System.out.println();
     }
 }
